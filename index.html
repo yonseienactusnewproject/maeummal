@@ -515,6 +515,30 @@ if(!ms.length){var m=document.createElement("meta");m.name="viewport";document.h
 ms.forEach(function(m){m.setAttribute("content",c);});}catch(_){}})();
 </script>
 <script>
+/* 새 버전이 올라오면 홈 화면 앱도 알아서 새로고침 */
+const BUILD="2026-11-24a";
+(function(){
+  if(location.protocol==="file:")return;
+  let busy=false;
+  async function check(){
+    if(busy)return; busy=true;
+    try{
+      const r=await fetch(location.pathname+"?_v="+Date.now(),{cache:"no-store"});
+      const t=await r.text(); const m=t.match(/const BUILD="([^"]+)"/);
+      if(m&&m[1]!==BUILD){
+        const k="mm_reloaded_"+m[1];
+        if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,"1");
+          try{await fetch(location.pathname,{cache:"reload"});}catch(_){}
+          location.reload();}
+      }
+    }catch(_){}
+    busy=false;
+  }
+  window.addEventListener("load",()=>setTimeout(check,1500));
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")check();});
+})();
+</script>
+<script>
 /* ================= 날짜 테스트 모드 (실제 기록과 분리된 복사본) ================= */
 let TEST=null, REAL_S=null, REAL_REF=null;
 const nowMs=()=>Date.now()+(TEST?TEST.offset*864e5:0);

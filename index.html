@@ -489,7 +489,7 @@ input,textarea,select{font-size:16px}
   }
   async function callAI(input,opts){
     const s=await ensureAuth(); if(!s)throw {code:"session_expired",message:"접속에 실패했어요. 새로고침해 주세요."};
-    const {data,error}=await sb.functions.invoke("ai",{body:{input,tier:(opts&&opts.modelTier)||"default"}});
+    const {data,error}=await sb.functions.invoke("AI-",{body:{input,tier:(opts&&opts.modelTier)||"default"}});
     if(error){let code="upstream_error",message="AI와 연결하지 못했어요.";try{const j=await error.context.json();code=j.code||code;message=j.message||message;}catch(_){}throw {code,message};}
     if(!data||!data.text)throw {code:"empty_completion",message:"AI가 답을 만들지 못했어요."};
     if(opts&&opts.onText)try{opts.onText({text:data.text,delta:data.text});}catch(_){}

@@ -1,0 +1,16 @@
+{
+  "name": "마음말",
+  "short_name": "마음말",
+  "description": "말로 잘 안 되는 마음에 이름을 붙이고, 작은 걸음과 기록으로 내 변화를 돌아보는 곳",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbf8f3",
+  "theme_color": "#fbf8f3",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -258,6 +258,13 @@ input.txt,textarea.txt,.offer input,.offer textarea,#inp{font-size:16px}
 @media (max-width:400px){.brand small{display:none}.brand{font-size:24px}header.top{align-items:center}}
 @media (max-width:420px){main{padding:8px 14px 18px}.card{padding:18px 16px}}
 input,textarea,select{font-size:16px}
+.guide.g1{padding:12px 14px}.guide .gh{display:flex;justify-content:space-between;align-items:center;gap:8px}.guide .gh b{font-size:14.5px}
+.guide .gx{border:0;background:none;color:var(--accent);font-size:13px;text-decoration:underline;cursor:pointer;padding:4px 0;white-space:nowrap}
+.guide .gn{font-size:14px;margin-top:4px}
+.msgs{min-height:120px}
+@media (max-height:620px){header.top{padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:4px}.today .status{display:none}.guide.g1{padding:8px 12px;margin-bottom:8px}.guide .gn{font-size:13px}}
+@media (max-width:400px){.modebar{gap:4px;padding:8px 10px}.modebar .btn.sm{padding:6px 10px;font-size:13px}#modeLbl{white-space:nowrap;font-size:13px}}
+.modebar.practicing #modeLbl{flex-basis:100%;white-space:normal}
 .modebar.practicing{background:var(--warm-soft)}.modebar.practicing #modeLbl{color:#7a4524;font-weight:700;font-size:14px}
 </style>
 </head>
@@ -284,7 +291,7 @@ input,textarea,select{font-size:16px}
         </div>
         <div class="msgs" id="msgs"></div>
         <div class="composer">
-          <textarea id="inp" rows="1" placeholder="오늘 마음이 어땠는지, 아무 말이나 괜찮아요"></textarea>
+          <textarea id="inp" rows="1" placeholder="오늘 마음, 편하게 적어 보세요"></textarea>
           <button class="btn" id="btnSend">보내기</button>
         </div>
       </div>
@@ -894,7 +901,7 @@ function renderHome(){
   if(total||rc){
     h+=`<div class="homefoot">`;
     if(rc)h+=`<div class="recall"><div class="when">${rc.label} · ${esc(rc.k.slice(5).replace("-","/"))} ${rc.wx?WX[rc.wx]||"":""}</div><div>${esc(rc.text)}</div>${rc.sub?`<div class="small muted">${esc(rc.sub)}</div>`:""}</div>`;
-    if(total)h+=`<div class="total">지금까지 <b style="margin:0 3px">${total}일</b>을 기록했어요</div>`;
+    if(total)h+=`<div class="total">지금까지 <b style="margin-left:3px">${total}일</b>을 기록했어요</div>`;
     h+=`</div>`;
   }
   box.innerHTML=h;
@@ -1184,12 +1191,13 @@ function guideHTML(){
   if(S.cards.length||S.guideDone||needConsent())return "";
   const s1=!!(todayDay()&&todayDay().weather), n=userMsgCount(), s2=n>=3;
   const st=(ok,t)=>`<div class="st ${ok?"done":""}"><span class="ck">${ok?"✓":""}</span><span>${t}</span></div>`;
-  return `<div class="guide"><b>처음 오셨네요. 이렇게 시작해 봐요 🌱</b>
-    ${st(s1,"오늘 마음 날씨 고르기")}
-    ${st(s2,`오늘 있었던 일 편하게 말하기 (${Math.min(n,3)}/3번)`)}
-    ${st(false,"감정 카드 만들기: 대화 속 감정에 이름 붙이기")}
-    ${s2?`<div class="row" style="margin-top:10px"><button class="btn sm" id="gCard">감정 카드 만들어 볼래요?</button></div>`:""}
-    <div style="text-align:right"><button class="btn ghost sm" id="gSkip" style="margin-top:6px">안내 닫기</button></div></div>`;
+  const done=(s1?1:0)+(s2?1:0);
+  const next=!s1?"오늘 마음 날씨를 골라 주세요"
+    :!s2?`아래 입력창에 오늘 있었던 일을 편하게 말해 보세요 (${Math.min(n,3)}/3)`
+    :"대화 속 감정에 이름을 붙여 감정 카드를 만들어 봐요";
+  return `<div class="guide g1"><div class="gh"><b>🌱 첫날 할 일 ${done}/3</b><button class="gx" id="gSkip">안내 닫기</button></div>
+    <div class="gn">${esc(next)}</div>
+    ${s2?`<div class="row" style="margin-top:8px"><button class="btn sm" id="gCard">감정 카드 만들기</button></div>`:""}</div>`;
 }
 function bindGuide(){
   const g=$("#gCard"); if(g)g.onclick=()=>{makeCard();};
@@ -1409,6 +1417,20 @@ JSON 하나만 출력: {"line":"","finds":[]}`,{modelTier:"quick"});
   };
 }
 function safeRender(f){try{f();}catch(e){console.error(e);}}
+function fitChat(){
+  try{
+    if(!$("#v-chat").classList.contains("on"))return;
+    const m=$("#msgs"), top=m.getBoundingClientRect().top+window.scrollY;
+    const comp=document.querySelector(".composer").offsetHeight, tabs=document.querySelector(".tabs").offsetHeight;
+    const avail=window.innerHeight-top-comp-tabs-14;
+    m.style.maxHeight=Math.max(120,Math.min(avail,window.innerHeight*0.62))+"px";
+    m.scrollTop=m.scrollHeight;
+  }catch(_){}
+}
+{const _rh=renderHome; renderHome=function(){const r=_rh.apply(this,arguments);requestAnimationFrame(fitChat);return r;};
+ const _sv=showView; showView=function(){const r=_sv.apply(this,arguments);requestAnimationFrame(fitChat);return r;};
+ window.addEventListener("resize",()=>requestAnimationFrame(fitChat));
+ window.addEventListener("load",()=>setTimeout(fitChat,50));}
 function questFeeling(q){
   openModal(`<h3>${LV_IC[q.lv]} 해냈어요!</h3>
     <p class="small muted">「${esc(q.t)}」를 하는 동안, 혹은 하고 나서 마음이 어땠어요?</p>

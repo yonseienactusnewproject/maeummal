@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbf8f3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -257,6 +257,8 @@ input.txt,textarea.txt,.offer input,.offer textarea,#inp{font-size:16px}
 .hometop{margin-bottom:12px}
 @media (max-width:400px){.brand small{display:none}.brand{font-size:24px}header.top{align-items:center}}
 @media (max-width:420px){main{padding:8px 14px 18px}.card{padding:18px 16px}}
+input,textarea,select{font-size:16px}
+.modebar.practicing{background:var(--warm-soft)}.modebar.practicing #modeLbl{color:#7a4524;font-weight:700;font-size:14px}
 </style>
 </head>
 <body>
@@ -500,6 +502,12 @@ input.txt,textarea.txt,.offer input,.offer textarea,#inp{font-size:16px}
 })();
 </script>
 <script>
+/* 입력창을 눌러도 화면이 확대되지 않게 (아이폰) */
+(function(){try{var ms=document.querySelectorAll('meta[name="viewport"]');var c="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover";
+if(!ms.length){var m=document.createElement("meta");m.name="viewport";document.head.appendChild(m);ms=[m];}
+ms.forEach(function(m){m.setAttribute("content",c);});}catch(_){}})();
+</script>
+<script>
 /* ================= 날짜 테스트 모드 (실제 기록과 분리된 복사본) ================= */
 let TEST=null, REAL_S=null, REAL_REF=null;
 const nowMs=()=>Date.now()+(TEST?TEST.offset*864e5:0);
@@ -629,7 +637,7 @@ function memoryContext(){
 
 const MODES = {
   free:{label:"말벗 대화",greet:()=>S.cards.length?`다시 와 주셨네요. 지난번엔 '${S.cards[S.cards.length-1].words[0]}'이라는 마음을 나눴었죠. 오늘은 어떤 하루였어요?`:"안녕하세요, 마음말이에요. 여기서는 어떤 말이든 괜찮아요. 오늘 하루, 마음이 어땠어요?",
-    sys:()=>`너는 '마음말'의 AI 말벗이다. 무가치함과 싸우는 사람이 자기 마음을 언어로 이해하도록 돕는다. 사용자가 꺼낸 말에서 감정을 비춰 주고, 그 감정이 어떤 이름일지 함께 찾아본다.${BASE_RULES}\n\n${memoryContext()}`},
+    sys:()=>`너는 '마음말'의 AI 말벗이다. 무가치함과 싸우는 사람이 자기 마음을 언어로 이해하도록 돕는다. 사용자가 꺼낸 말에서 감정을 비춰 주고, 그 감정이 어떤 이름일지 함께 찾아본다. 사용자가 사람 관계로 속상했던 이야기를 하면 누구 편도 들지 않고 상대의 의도를 단정하지 않으며, 무슨 일이 있었는지·그때 내 마음·내가 바랐던 것을 차분히 함께 정리한다.${BASE_RULES}\n\n${memoryContext()}`},
   relation:{label:"관계 정리하기",greet:()=>"어떤 일이 있었는지 편하게 들려주세요. 누가 옳고 그른지 따지기보다, 그때 내 마음이 어땠는지 같이 정리해 볼게요.",
     sys:()=>`너는 '마음말'의 관계 정리 도우미다. 사용자가 속상했던 관계 이야기를 하면 (1) 무슨 일이 있었는지 사실을 차분히 정리하고 (2) 그때 사용자가 느낀 감정에 이름을 붙이도록 돕고 (3) 사용자가 원하는 게 무엇이었는지 함께 찾는다. 절대 누구 편을 들지 않고 상대를 나쁜 사람으로 만들지 않는다. 상대의 의도를 단정하지 않는다.${BASE_RULES}`},
   practice:{label:"말하기 연습",greet:()=>"",sys:()=>""}
@@ -660,7 +668,9 @@ function addCrisis(kind){
 function startMode(m,opts){
   mode=m; $("#cardOut").innerHTML="";
   if(m==="practice"){practice=opts;MODES.practice.label=`말하기 연습 · ${opts.kind}${opts.who?` · ${opts.who}`:""}`;}
-  $("#modeLbl").textContent=MODES[m].label;
+  $("#modeLbl").textContent=m==="practice"?"🎙️ "+MODES[m].label:MODES[m].label;
+  document.querySelector(".modebar").classList.toggle("practicing",m==="practice");
+  $("#btnBackFree").textContent=m==="practice"?"연습 끝내기":"말벗으로";
   $("#btnCard").textContent=m==="relation"?"정리 카드 만들기":m==="practice"?"피드백 받기":"감정 카드 만들기";
   $("#btnBackFree").style.display=m==="free"?"none":"";
   $("#msgs").innerHTML="";
@@ -1021,11 +1031,11 @@ function renderRelLog(){
   box.innerHTML=rs.length?rs.map(relCardHTML).join(""):`<div class="empty">아직 기록이 없어요. 관계 정리나 말하기 연습을 마치면 여기에 남아요.</div>`;
   bindRel(box);
 }
-async function makeRelCard(){
-  const userLines=session.filter(x=>x.role==="user");
+async function makeRelCard(src){
+  src=src||session; const userLines=src.filter(x=>x.role==="user");
   if(!userLines.length){$("#cardOut").innerHTML=`<div class="card empty">먼저 어떤 일이 있었는지 조금 들려주세요.</div>`;return;}
   $("#btnCard").disabled=true; $("#cardOut").innerHTML=`<div class="card empty typing">이야기를 차분히 정리하는 중</div>`;
-  const convo=session.slice(-24).map(x=>`${x.role==="user"?"사용자":"AI"}: ${x.content}`).join("\n");
+  const convo=src.slice(-24).map(x=>`${x.role==="user"?"사용자":"AI"}: ${x.content}`).join("\n");
   const risk=userLines.some(x=>VIOLENCE.test(x.content)||CRISIS.test(x.content));
   let v;
   try{v=await askJSON(`아래는 사용자가 관계에서 속상했던 일을 이야기한 대화입니다. 이것을 '정리 카드'로 정리해 주세요.
@@ -1046,6 +1056,8 @@ ${convo}`,{modelTier:"default"});}
   rels().push(r); save();
   $("#cardOut").innerHTML=relCardHTML(r)+`<p class="small muted" style="text-align:center">관계 탭의 "나의 관계 기록"과 기록 탭 달력에서 다시 볼 수 있어요.</p>`;
   bindRel($("#cardOut")); safeRender(renderRelLog); safeRender(renderRecord);
+  S.relLaterN=0; save();
+  $("#cardOut").scrollIntoView({behavior:"smooth",block:"center"});
   if(risk)addCrisis("violence");
   $("#btnCard").disabled=false;
 }
@@ -1069,7 +1081,8 @@ ${convo}`,{modelTier:"default"});}
   wait.remove();
   const r={id:uid(),kind:"연습",date:today(),ts:nowMs(),title:String(v.title||practice.kind).slice(0,60),who:practice.who||"",good:(Array.isArray(v.good)?v.good:[]).slice(0,2).map(String),better:(Array.isArray(v.better)?v.better:[]).slice(0,2).map(String),next:String(v.next||"").slice(0,160),opts:Object.assign({},practice),from:practice.from||null};
   rels().push(r); save();
-  $("#cardOut").innerHTML=relCardHTML(r)+`<p class="small muted" style="text-align:center">연습을 계속하려면 이어서 말해도 되고, "새 대화"로 처음부터 다시 할 수도 있어요.</p>`;
+  $("#cardOut").innerHTML=relCardHTML(r)+`<p class="small muted" style="text-align:center">더 연습하려면 이어서 말해 보세요.</p><div class="row" style="justify-content:center;margin-bottom:12px"><button class="btn sm" id="btnPracDone">연습 끝내고 말벗으로 돌아가기</button></div>`;
+  $("#btnPracDone").onclick=()=>{startMode("free");window.scrollTo({top:0,behavior:"smooth"});};
   bindRel($("#cardOut")); safeRender(renderRelLog); safeRender(renderRecord);
   $("#cardOut").scrollIntoView({behavior:"smooth",block:"start"});
   $("#btnCard").disabled=false;
@@ -1282,6 +1295,14 @@ function renderPendingCards(){
     box.querySelector('[data-a="no"]').onclick=()=>{S.plan.confirm="no-"+nowMs();save();box.remove();};
     return;
   }
+  if(S.relOffer===today()&&S.relOfferAns!==today()){
+    const box=offerBox(`<div class="ot">🧶 이 일, 관계 정리 카드로 남겨 둘까요?</div><div class="small muted">무슨 일이 있었는지, 그때 내 마음, 내가 바랐던 것을 한 장으로 정리해 드려요.</div>
+      <div class="row"><button class="btn sm" data-a="mk">정리 카드 만들기</button><button class="btn ghost sm" data-a="later">조금 더 이야기할래요</button><button class="btn ghost sm" data-a="skip">괜찮아요</button></div>`);
+    box.querySelector('[data-a="mk"]').onclick=async()=>{S.relOfferAns=today();save();box.remove();await makeRelCard(todayUserTalk().length?(S.chat||[]).filter(m=>m.ts&&dkey(new Date(m.ts))===today()):null);};
+    box.querySelector('[data-a="later"]').onclick=()=>{S.relOffer="later-"+today();S.relLaterN=todayUserTalk().length;save();box.remove();};
+    box.querySelector('[data-a="skip"]').onclick=()=>{S.relOfferAns=today();save();box.remove();};
+    return;
+  }
   // 한 번에 카드 하나만: 어제 퀘스트 확인 > 시작점 > 퀘스트 제안 > 하루 마무리
   if(S.plan&&S.plan.asked==="pending"&&!S.plan.done){
     const p=S.plan, box=offerBox(`<div class="small muted">💬 ${esc(dayLabel(p.date))} 정한 퀘스트</div><div class="ot">「${esc(p.text)}」 해 봤어요?</div>
@@ -1314,12 +1335,22 @@ function renderPendingCards(){
     box.querySelector('[data-a="skip"]').onclick=()=>{S.dailyOfferAns=today();save();box.remove();};
   }
 }
+const REL=/(친구|엄마|아빠|부모|가족|형이|형한테|누나|언니|오빠|동생|선배|후배|교수|팀플|조원|룸메|동기|남친|여친|남자\s*친구|여자\s*친구|애인|헤어졌|싸웠|다퉜|서운|손절|단톡|읽씹|안\s*읽|상사|팀장|동료|사장님)/;
+function todayUserTalk(){return (S.chat||[]).filter(m=>m.role==="user"&&m.ts&&dkey(new Date(m.ts))===today());}
+function relOfferDue(){
+  if(S.relOffer===today()||S.relOfferAns===today())return false;
+  if(S.relOffer==="later-"+today())return todayUserTalk().length>=(S.relLaterN||0)+2;
+  const t=todayUserTalk(); if(!t.length)return false;
+  if(S.relFocus===today())return t.length>=2;
+  return t.length>=3&&t.filter(m=>REL.test(m.content)).length>=2;
+}
 function maybeOffer(){
   if(mode!=="free"||!S.consent)return;
   const n=todayUserMsgs(), last=(S.chat||[]).filter(m=>m.role==="user").slice(-1)[0];
   if(last&&(CRISIS.test(last.content)||VIOLENCE.test(last.content)))return; // 힘든 이야기 중에는 제안하지 않음
   if(document.querySelector("#msgs .offer [data-a]"))return; // 답하지 않은 카드가 있으면 새 카드 안 띄움
   if(last&&S.plan&&S.plan.date===today()&&!S.plan.done&&S.plan.confirm!==today()&&!/(안|못)\s*(했|해|갔|봤)/.test(last.content)&&/(다녀왔|갔다\s*왔|하고\s*왔|해\s*봤|해봤|했어|했다|봤어|보고\s*왔|끝냈|해냈|하고\s*옴)/.test(last.content)){S.plan.confirm=today();save();renderPendingCards();return;}
+  if(relOfferDue()){S.relOffer=today();save();renderPendingCards();return;}
   if(isFirstDay())return; // 첫날은 대화와 감정 카드에만 집중
   if(n>=3&&!questDoneToday()&&S.questStart==null&&S.startHint!==today()&&S.startHint!=="done"&&S.startHint!=="skip-"+today()){S.startHint=today();save();renderPendingCards();return;}
   if(n>=3&&!questDoneToday()&&!(S.plan&&S.plan.date===today())&&!(S.offer&&S.offer.date===today())&&S.questStart!=null){makeOffer();return;}
@@ -1993,7 +2024,14 @@ $("#btnNew").onclick=()=>{
   if(mode==="free"){S.chat=[];save();}
   startMode(mode==="practice"?"practice":mode,practice);
 };
-document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>startMode(b.dataset.mode));
+document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>b.dataset.mode==="relation"?startRelTalk():startMode(b.dataset.mode));
+function startRelTalk(){
+  if(mode!=="free")startMode("free"); else showView("chat");
+  const m="어떤 일이 있었는지 편하게 들려주세요. 누가 옳고 그른지 따지기보다, 그때 내 마음이 어땠는지 같이 정리해 볼게요.";
+  const ls=[...document.querySelectorAll("#msgs .msg.sep")].at(-1); if(!ls||ls.textContent!=="오늘")addMsg("sep","오늘","sep");
+  S.chat=(S.chat||[]).concat([{role:"assistant",content:m,ts:nowMs()}]); session=S.chat.slice(); S.relFocus=today(); save();
+  addMsg("ai",m); setTimeout(()=>{try{$("#inp").focus();}catch(_){}} ,150);
+}
 const PRACTICE_PH={"거절하기":"예: 팀플에서 내 몫이 아닌 일을 자꾸 넘겨받아요","서운함 말하기":"예: 친구가 약속을 자주 당일에 취소해서 서운했어요","부탁하기":"예: 선배에게 자소서 한 번 봐 달라고 부탁하고 싶어요","사과하기":"예: 바빠서 친구 연락을 2주 동안 못 받았어요","먼저 연락하기":"예: 한동안 연락이 끊긴 고등학교 친구에게 안부를 묻고 싶어요","거리 두기":"예: 단톡에서 매일 밤 늦게까지 이어지는 대화가 버거워요","custom":"어떤 상황인지 자유롭게 적어 주세요"};
 document.querySelectorAll("#practiceChips .chip").forEach(c=>c.onclick=()=>{document.querySelectorAll("#practiceChips .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");
   $("#practiceKind").style.display=c.dataset.s==="custom"?"":"none"; $("#practiceCtx").placeholder="어떤 상황인가요? ("+PRACTICE_PH[c.dataset.s]+")"; if(c.dataset.s==="custom")$("#practiceKind").focus();});

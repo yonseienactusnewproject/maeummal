@@ -246,8 +246,16 @@ h3{font-size:16.5px;margin-bottom:10px}
 .ainote{font-size:12.5px}
 .guide,.fw,.mail,.hello{margin-bottom:14px}
 .chatbox{height:auto;min-height:0}
-.msgs{min-height:52vh;max-height:64vh}
+.msgs{min-height:34vh;max-height:56vh}
 .home .homefoot{margin-top:12px}
+.modal{max-height:88vh;overflow:auto;-webkit-overflow-scrolling:touch}
+header.top{padding-top:calc(24px + env(safe-area-inset-top))}
+.tabs{padding-bottom:env(safe-area-inset-bottom)}
+.app{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+input.txt,textarea.txt,.offer input,.offer textarea,#inp{font-size:16px}
+.hometop:empty{display:none}
+.hometop{margin-bottom:12px}
+@media (max-width:400px){.brand small{display:none}.brand{font-size:24px}header.top{align-items:center}}
 @media (max-width:420px){main{padding:8px 14px 18px}.card{padding:18px 16px}}
 </style>
 </head>
@@ -263,7 +271,7 @@ h3{font-size:16.5px;margin-bottom:10px}
   <main>
     <!-- ===== 대화 ===== -->
     <section class="view on" id="v-chat">
-      <div class="home" id="home"></div>
+      <div class="home hometop" id="homeTop"></div>
       <div class="card chatbox">
         <div class="modebar">
           <span class="small muted" id="modeLbl">말벗 대화</span>
@@ -278,6 +286,7 @@ h3{font-size:16.5px;margin-bottom:10px}
           <button class="btn" id="btnSend">보내기</button>
         </div>
       </div>
+      <div class="home" id="home" style="margin-top:14px"></div>
       <p class="ainote">🤖 답변은 AI가 만들어요. 틀리거나 어색할 수 있어요.</p>
       <div id="cardOut"></div>
       <p class="notice">마음말은 상담이나 치료를 대신하지 않아요. 지금 위험하다고 느끼면 <b>자살예방상담전화 109</b>, <b>정신건강위기상담 1577-0199</b>, 긴급 상황은 <b>112 / 119</b>로 바로 연락하세요.</p>
@@ -422,7 +431,7 @@ h3{font-size:16.5px;margin-bottom:10px}
     <!-- ===== 레포트 ===== -->
     <section class="view" id="v-report">
       <h2>주간 레포트</h2>
-      <p class="sub">AI가 초안을 쓰고, 상담 전문가가 검토하며 한 마디를 더해요.</p>
+      <p class="sub">한 주 동안 남긴 기록을 AI가 돌아보고 정리해 줘요.</p>
       <div class="card">
         <div class="row" style="justify-content:space-between">
           <div><h3 style="margin:0">이번 주의 나</h3><span class="small muted" id="weekLbl"></span></div>
@@ -434,7 +443,7 @@ h3{font-size:16.5px;margin-bottom:10px}
         <h3>지난 레포트</h3>
         <div id="reportList"></div>
       </div>
-      <p class="notice">전문가 감수 안내: 시범 운영에서는 협력 상담 전문가가 레포트를 읽는다는 사실에 미리 동의를 받고, 이름 등 개인 정보는 빼고 전달해요. 공유는 본인이 원할 때만 할 수 있어요.</p>
+      <p class="notice">시범 운영 중에는 레포트를 AI가 작성하며, 전문가 검토는 아직 없어요. 진단이나 상담을 대신하지 않아요.</p>
     </section>
   </main>
 
@@ -863,6 +872,7 @@ function renderHome(){
   if(welcomeGap>=3&&!helloClosed)h+=`<div class="hello"><span>🌿</span><span><b>다시 와 줘서 반가워요.</b><br>그동안 어땠어요? 길게 말하지 않아도 괜찮아요. 오늘 마음 날씨 하나만 골라도 충분해요.</span><button id="helloX" aria-label="닫기">×</button></div>`;
   h+=guideHTML()+firstWeekHTML();
   if(unread)h+=`<div class="mail"><span style="font-size:22px">📬</span><span style="flex:1"><b>이번 주 레포트가 도착했어요</b><br><span class="small">${esc(unread.title||"")}</span></span><button class="btn sm" id="goReport">열어 보기</button></div>`;
+  const topBox=$("#homeTop"); if(topBox){topBox.innerHTML=h;h="";}
   h+=`<div class="card checkin" style="margin-bottom:0">`;
   if(d&&d.weather&&!ciEditing){
     h+=`<div class="done"><span class="e">${WX[d.weather]}</span><div style="flex:1"><b>오늘 마음 날씨: ${esc(WX_LABEL[d.weather])}</b><div class="small muted">기록했어요. 더 말하고 싶으면 아래에서 이야기해요.</div></div><button class="btn ghost sm" id="ciChange">바꾸기</button></div>`;
@@ -926,7 +936,7 @@ function testExit(){
 let DEV=false;
 function setDev(on,why){
   DEV=!!on; $("#btnTest").style.display=DEV?"":"none";
-  if(why==="tap"){try{on?localStorage.setItem("mm_dev","1"):localStorage.removeItem("mm_dev");}catch(_){}}
+  if(why==="tap"){try{on?localStorage.setItem("mm_site_dev","1"):localStorage.removeItem("mm_site_dev");}catch(_){}}
 }
 async function detectDev(){
   // 웹사이트 버전: 개발자 모드는 ?dev= 주소로만 켜져요
@@ -935,8 +945,17 @@ async function detectDev(){
 let brandTaps=[];
 function brandTap(){
   const t=Date.now(); brandTaps=brandTaps.filter(x=>t-x<3000); brandTaps.push(t);
-  if(brandTaps.length>=5){brandTaps=[];setDev(!DEV,"tap");setStatus(false,DEV?"🛠 개발자 모드 켜짐":"개발자 모드 꺼짐");}
+  if(brandTaps.length>=5){brandTaps=[];
+    if(DEV){setDev(false,"tap");setStatus(false,"개발자 모드 꺼짐");return;}
+    // 사이트 버전: 로고 5번 + 개발자 코드
+    modalLocked=false; $("#modal").classList.remove("wide");
+    openModal(`<h3 style="margin-top:0">🛠 개발자 코드</h3><input class="txt" id="devPin" inputmode="numeric" maxlength="8" placeholder="코드를 입력하세요" autocomplete="off">
+      <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" id="devNo">취소</button><button class="btn" id="devOk">확인</button></div>`);
+    $("#devNo").onclick=closeModal;
+    $("#devOk").onclick=()=>{if($("#devPin").value.trim()===DEV_PIN){closeModal();setDev(true,"tap");setStatus(false,"🛠 개발자 모드 켜짐");}else{$("#devPin").value="";$("#devPin").placeholder="코드가 맞지 않아요";}};
+  }
 }
+const DEV_PIN="2580";
 function resetAll(){
   if(TEST)testExit();
   const keepUpdated=nowMs();
@@ -960,7 +979,7 @@ function openResetConfirm(){
 }
 function openTestMenu(){
   openModal(`<h3>🛠 개발자 메뉴</h3>
-    <p class="small muted" style="margin-top:-4px">이 메뉴는 개발자 주소(?dev=)로 들어온 기기에서만 보여요. 끄려면 주소 끝에 ?dev=off</p>
+    <p class="small muted" style="margin-top:-4px">이 메뉴는 개발자 모드를 켠 기기에서만 보여요. 켜기: 로고 5번 누르고 코드 입력, 또는 ?dev= 주소. 끄기: 아래 "개발자 버튼 숨기기"</p>
     <h4 style="margin:14px 0 4px">🧪 날짜 테스트</h4>
     <p class="small">하루나 일주일 뒤로 날짜를 넘겨서 지난 기록, 회상 카드, 주간 레포트 도착, 돌아온 날 메시지를 확인할 수 있어요.</p>
     <p class="small muted">지금까지의 기록을 복사해서 테스트해요. 테스트 중에 남긴 기록은 실제 기록에 저장되지 않고, "테스트 끝내기"나 새로고침을 하면 원래대로 돌아가요.</p>
@@ -1153,7 +1172,7 @@ function guideHTML(){
   const s1=!!(todayDay()&&todayDay().weather), n=userMsgCount(), s2=n>=3;
   const st=(ok,t)=>`<div class="st ${ok?"done":""}"><span class="ck">${ok?"✓":""}</span><span>${t}</span></div>`;
   return `<div class="guide"><b>처음 오셨네요. 이렇게 시작해 봐요 🌱</b>
-    ${st(s1,"오늘 마음 날씨 고르기 (아래에서 10초)")}
+    ${st(s1,"오늘 마음 날씨 고르기")}
     ${st(s2,`오늘 있었던 일 편하게 말하기 (${Math.min(n,3)}/3번)`)}
     ${st(false,"감정 카드 만들기: 대화 속 감정에 이름 붙이기")}
     ${s2?`<div class="row" style="margin-top:10px"><button class="btn sm" id="gCard">감정 카드 만들어 볼래요?</button></div>`:""}
@@ -1564,9 +1583,10 @@ function songBlock(holder,rec,ctxFn,label){
     holder.querySelector("[data-again]").onclick=()=>{rec.songs=null;songBlock(holder,rec,ctxFn,label);};
     holder.querySelectorAll("[data-like],[data-dislike]").forEach(b=>b.onclick=()=>{const i=+(b.dataset.like??b.dataset.dislike);rateSong(rec.songs[i],b.dataset.like!==undefined);songBlock(holder,rec,ctxFn,label);});
   }else{
+    if(!rec._songOpen){holder.innerHTML=`<button class="btn soft sm" data-open>${label}</button>`;holder.querySelector("[data-open]").onclick=()=>{rec._songOpen=true;songBlock(holder,rec,ctxFn,label);};return;}
     holder.innerHTML=`<div class="small muted" style="margin-bottom:6px">지금 노래에서 원하는 건? <span>(골라도, 안 골라도 돼요)</span></div>
       <div class="songwant">${Object.entries(SONG_WANT).map(([k,v])=>`<span class="chip ${rec.songWant===k?"on":""}" data-want="${k}">${v}</span>`).join("")}</div>
-      <button class="btn soft sm" data-get>${label}</button>`;
+      <button class="btn soft sm" data-get>추천받기</button>`;
     holder.querySelectorAll("[data-want]").forEach(c=>c.onclick=()=>{rec.songWant=rec.songWant===c.dataset.want?null:c.dataset.want;holder.querySelectorAll("[data-want]").forEach(x=>x.classList.toggle("on",x.dataset.want===rec.songWant));});
     holder.querySelector("[data-get]").onclick=()=>load();
   }
@@ -1814,7 +1834,7 @@ async function makeMonthly(){
     const cs=st.cards.filter(c=>{const d=+c.date.slice(8);return d>=from&&d<=to;}), qs=st.done.filter(q=>{const d=+q.date.slice(8);return d>=from&&d<=to;});
     return `${w+1}주차(${from}~${to}일): 날씨 ${cs.map(c=>WX[c.weather]).join("")||"-"} / 감정 ${[...new Set(cs.flatMap(c=>c.words))].join(", ")||"-"} / 퀘스트 ${qs.map(q=>LEVELS[q.level]).join(",")||"-"}`;}).filter(Boolean).join("\n");
   const quotes=st.cards.filter(c=>c.quote).filter((_,i,a)=>i%Math.max(1,Math.floor(a.length/6))===0).slice(0,6).map(c=>`- ${c.date.slice(5)} "${c.quote}"`).join("\n");
-  const prompt=`당신은 '마음말'의 월간 리포트 초안 작성자입니다. 사용자 본인이 읽고, 이후 상담 전문가가 검토합니다.
+  const prompt=`당신은 '마음말'의 월간 리포트 초안 작성자입니다. 사용자 본인이 읽습니다.
 원칙: 판단·진단명·점수·타인과의 비교 금지. 비교는 '지난달의 나'와만. 따뜻하지만 구체적으로, 실제 기록에 근거해서. 과장된 칭찬 금지.
 해결 방법은 인지행동치료의 감정 이름 붙이기·생각 다시 보기, 행동 활성화(아주 작은 활동), 관계 연습 같은 근거 있는 셀프케어 수준으로, 이번 달 기록에서 보인 어려움에 맞춰 오늘 바로 해볼 수 있을 만큼 작게. 상담이 필요해 보이면 그것도 하나의 방법으로 부드럽게 제안.
 자해·자살·폭력 관련 신호가 있으면 riskFlag true.
@@ -1862,7 +1882,7 @@ function monthlyHTML(r){
     ${r.patterns&&r.patterns.length?`<h4>🔁 반복해서 만난 어려움</h4><ul style="margin:0;padding-left:20px">${li(r.patterns)}</ul>`:""}
     <h4>🧭 이렇게 해 보면 어떨까요</h4>${sols}
     <h4>🎯 다음 달의 작은 목표</h4><div class="note">${esc(r.nextMonth)}</div>
-    <h4>전문가 한 마디</h4><div class="pro">${r.review==="pending"?"🕊️ 상담 전문가가 검토 중이에요. 해결 방법이 나에게 맞는지도 함께 살펴봐요.":esc(r.review)}</div>
+    ${r.review&&r.review!=="pending"?`<h4>전문가 한 마디</h4><div class="pro">${esc(r.review)}</div>`:""}
   </div>`;
 }
 function bindMonthly(){
@@ -1895,7 +1915,7 @@ async function makeReport(opt={}){
   if(!cards.length&&!qs.length&&!dls.length){$("#reportOut").innerHTML=`<div class="empty">이번 주 기록이 아직 없어요. 감정 카드, 퀘스트, 하루 마무리 중 하나라도 있으면 레포트를 만들 수 있어요.</div>`;return;}
   if(!auto){$("#btnReport").disabled=true; $("#reportOut").innerHTML=`<div class="empty typing">한 주를 돌아보는 중</div>`;}
   const data=`[감정 카드]\n${cards.map(c=>`- ${c.date} ${WX[c.weather]} ${c.words.join(", ")} | ${c.summary} | 사용자의 말: "${c.quote}"`).join("\n")||"- 없음"}\n[퀘스트]\n${qs.map(q=>q.rest?`- ${q.date} 쉬기를 선택`:`- ${q.date} ${q.text} (${LEVELS[q.level]}) 느낌: ${q.feeling||"-"}`).join("\n")||"- 없음"}\n[하루 마무리]\n${dls.map(x=>`- ${x.date} ${x.survived?"그냥 버틴 날":""} ${x.weather?WX[x.weather]:""} 한 줄: "${x.line||"-"}" 작은 발견: ${(x.finds||[]).join(", ")||"-"}`).join("\n")||"- 없음"}\n[관계]\n${rl.map(r=>r.kind==="연습"?`- ${r.date} 말하기 연습: ${r.title}${r.tried?" (실제로 말해 봄)":""}`:`- ${r.date} 관계 정리: ${r.situation} | 감정: ${(r.feelings||[]).join(", ")}${r.tried?" (실제로 해 봄)":""}`).join("\n")||"- 없음"}`;
-  const prompt=`당신은 '마음말'의 주간 레포트 초안 작성자입니다. 이 초안은 나중에 상담 전문가가 검토합니다. 사용자 본인이 읽는 글이에요.
+  const prompt=`당신은 '마음말'의 주간 레포트 초안 작성자입니다. 사용자 본인이 읽는 글이에요.
 원칙: 판단·진단·점수 없이, 비교는 '지난 나'와만. 따뜻하고 구체적으로. 위험 신호(자해·자살·폭력 언급)가 보이면 riskFlag를 true로.
 JSON 하나만 출력:
 {"title":"이번 주를 한 줄로 (20자 내외)","flow":"한 주 감정의 흐름 2~3문장","words":["이번 주 자주 나온 감정 단어 최대 4개"],"steps":"퀘스트 등 내가 내디딘 걸음 1~2문장 (없으면 쉬어 간 것도 인정)","notice":"스스로 알아차린 점이나 반복된 패턴 1~2문장","nextWeek":"다음 주에 해 볼 만한 아주 작은 제안 하나","riskFlag":false}
@@ -1921,8 +1941,7 @@ function reportHTML(r){
     <h4>내가 내디딘 걸음</h4><div>${esc(r.steps)}</div>
     <h4>알아차린 것</h4><div>${esc(r.notice)}</div>
     <h4>다음 주 작은 제안</h4><div>${esc(r.nextWeek)}</div>
-    <h4>전문가 한 마디</h4>
-    <div class="pro">${r.review==="pending"?"🕊️ 상담 전문가가 검토 중이에요. 시범 운영 기간에는 보통 며칠 안에 한 마디가 더해져요.":esc(r.review)}</div>
+    ${r.review&&r.review!=="pending"?`<h4>전문가 한 마디</h4><div class="pro">${esc(r.review)}</div>`:""}
     <div class="row" style="margin-top:14px;justify-content:space-between">
       <span class="small muted">${r.shared?"✅ 내가 선택해 상담사/센터와 공유했어요":"이 레포트는 나만 볼 수 있어요"}</span>
       <button class="btn ${r.shared?"ghost":"soft"} sm" data-share="${r.id}">${r.shared?"공유 취소":"상담사에게 공유하기"}</button>
@@ -2017,6 +2036,7 @@ function startModeSilent(){
   if(["quest","record","rel","report"].includes(v))showView(v);
 }
 detectDev();
+document.querySelector(".brand").addEventListener("click",brandTap);
 $("#btnTest").onclick=()=>storeReady?openTestMenu():setStatus(false,"기록을 불러오는 중이에요. 잠시 후 다시 눌러 주세요.");
 initStore().finally(()=>{storeReady=true;maybeAutoReport();if(needConsent())openConsent();else{safeRender(renderHome);showGate();}});
 /* 날짜가 바뀌면(자정이 지나면) 화면을 새 하루로 갱신 */

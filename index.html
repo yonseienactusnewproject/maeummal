@@ -220,6 +220,35 @@ input.txt,textarea.txt,select.txt{width:100%;border:1px solid var(--line);border
 .polish .t{white-space:pre-wrap;margin:4px 0 8px;font-size:14.5px}
 .song .fb{margin-left:auto;display:flex;gap:4px}.song .fb button{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 9px;cursor:pointer;font-size:13px}.song .fb button.on{background:var(--soft,#eef);border-color:currentColor}
 a.btn{text-decoration:none;display:inline-block}
+
+/* ===== 읽기 편하게: 글자 키우고 여백 넓히기 ===== */
+html,body{font-size:16px;line-height:1.7}
+.app{max-width:640px}
+header.top{padding:24px 22px 10px}
+main{padding:10px 20px 20px}
+.card{padding:22px 20px;margin-bottom:20px}
+h2{font-size:22px;margin:10px 4px 14px}
+h3{font-size:16.5px;margin-bottom:10px}
+.sub{font-size:14px;margin:-4px 4px 18px;line-height:1.6}
+.small{font-size:13.5px}
+.brand small,.today{font-size:13px}
+.btn{padding:11px 18px}
+.btn.sm{padding:8px 14px;font-size:14px}
+.chip{font-size:14px;padding:7px 13px}
+.tag{font-size:14px}
+.msgs{padding:18px;gap:12px}
+.msg{font-size:16px;line-height:1.65;padding:11px 15px}
+.msg.sys{font-size:13.5px}
+.composer textarea{font-size:16px}
+.offer{font-size:15px;padding:14px 16px;margin:10px 0}
+.quest{padding:14px 14px;margin-bottom:10px}
+.notice{font-size:13px;line-height:1.6}
+.ainote{font-size:12.5px}
+.guide,.fw,.mail,.hello{margin-bottom:14px}
+.chatbox{height:auto;min-height:0}
+.msgs{min-height:52vh;max-height:64vh}
+.home .homefoot{margin-top:12px}
+@media (max-width:420px){main{padding:8px 14px 18px}.card{padding:18px 16px}}
 </style>
 </head>
 <body>
@@ -1063,7 +1092,7 @@ const POLICY_HTML=`<div class="policy"><h3>개인정보 처리방침 <span class
 <h4>5. 제3자 제공</h4><p>법령에 따른 경우를 제외하고 제3자에게 제공하지 않습니다. 기관과 협력할 때도 개인을 알아볼 수 없는 통계만 공유합니다.</p>
 <h4>6. 만 14세 미만</h4><p>만 14세 미만은 이용할 수 없습니다.</p>
 <h4>7. 이용자의 권리</h4><p>이용자는 언제든 자신의 기록을 확인하고 삭제할 수 있으며, 동의를 철회할 수 있습니다(기록 삭제 후 이용 중단).</p>
-<h4>8. 문의</h4><p>개인정보 담당: 마음말 팀 · 연락처: <b>[팀 이메일을 적어 주세요]</b></p>
+<h4>8. 문의</h4><p>개인정보 담당: 마음말 팀 · 연락처: <b>yonseienactusnewproject@gmail.com</b></p>
 <p class="small muted">시행일: 파일럿 시작일 · 이 문서는 초안이며 정식 출시 전 법률 검토를 받을 예정입니다.</p></div>`;
 const TERMS_HTML=`<div class="policy"><h3>이용약관 <span class="small muted">(파일럿용 초안)</span></h3>
 <h4>1. 서비스 소개</h4><p>마음말은 AI와 대화하며 감정에 이름을 붙이고, 작은 퀘스트와 기록으로 자신의 변화를 돌아보는 <b>셀프케어 도구</b>입니다.</p>

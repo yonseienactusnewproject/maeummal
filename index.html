@@ -265,6 +265,12 @@ input,textarea,select{font-size:16px}
 @media (max-height:620px){header.top{padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:4px}.today .status{display:none}.guide.g1{padding:8px 12px;margin-bottom:8px}.guide .gn{font-size:13px}}
 @media (max-width:400px){.modebar{gap:4px;padding:8px 10px}.modebar .btn.sm{padding:6px 10px;font-size:13px}#modeLbl{white-space:nowrap;font-size:13px}}
 .modebar.practicing #modeLbl{flex-basis:100%;white-space:normal}
+.cookie{display:flex;align-items:center;gap:12px;background:#fff7ec;border:1px dashed #efc49d;border-radius:16px;padding:10px 14px;margin-bottom:12px;font-size:14.5px;cursor:pointer;color:#6b4024}
+.cookie.done,.cookie.open{border-style:solid}.cookie.done{cursor:default}
+.cookie .ce{font-size:28px;line-height:1;display:inline-block}
+.cookie.crack .ce{animation:crack .6s ease-in-out forwards}
+@keyframes crack{0%{transform:rotate(0)}20%{transform:rotate(-18deg)}40%{transform:rotate(16deg)}60%{transform:rotate(-10deg) scale(1.15)}100%{transform:scale(1.35);opacity:.2}}
+.msg.cookieline{background:#fff7ec;border:1px solid #efc49d;color:#6b4024}
 .modebar.practicing{background:var(--warm-soft)}.modebar.practicing #modeLbl{color:#7a4524;font-weight:700;font-size:14px}
 </style>
 </head>
@@ -341,7 +347,7 @@ input,textarea,select{font-size:16px}
         <div id="calDay"></div>
       </div>
       <details class="more" id="recMore">
-        <summary>📈 월간 리포트 · 감정 단어장 · 좋은 순간 · 감정 카드 모음 <span class="small muted">더 보기</span></summary>
+        <summary>📈 월간 리포트 · 감정 단어장 · 좋은 순간 · 마음 쿠키 · 감정 카드 모음 <span class="small muted">더 보기</span></summary>
       <div class="card" id="monthly">
         <div class="row" style="justify-content:space-between;margin-bottom:4px">
           <h3 style="margin:0">📈 월간 리포트</h3>
@@ -371,6 +377,11 @@ input,textarea,select{font-size:16px}
         <h3>✨ 내가 찾은 좋은 순간들</h3>
         <p class="small muted" style="margin:0 0 6px">하루 마무리에서 남긴 작은 발견이 여기 모여요.</p>
         <div id="moments"></div>
+      </div>
+      <div class="card">
+        <h3>🥠 마음 쿠키 모음</h3>
+        <p class="small muted" style="margin:0 0 6px">쿠키를 깨고 나눈 이야기에서 받은 글귀예요.</p>
+        <div id="cookieList"></div>
       </div>
       <div class="card">
         <h3>한 달 전 나의 말</h3>
@@ -516,7 +527,7 @@ ms.forEach(function(m){m.setAttribute("content",c);});}catch(_){}})();
 </script>
 <script>
 /* 새 버전이 올라오면 홈 화면 앱도 알아서 새로고침 */
-const BUILD="2026-11-24a";
+const BUILD="2026-11-24c";
 (function(){
   if(location.protocol==="file:")return;
   let busy=false;
@@ -736,7 +747,11 @@ async function send(){
   if(CRISIS.test(t))addCrisis("crisis"); else if(VIOLENCE.test(t))addCrisis("violence");
   $("#btnSend").disabled=true;
   const bubble=addMsg("ai","","ai typing");
-  const sys = mode==="practice"?practiceSys():MODES[mode].sys();
+  const ck=(mode==="free"&&cookieArmed)?todayCookie():null; cookieArmed=false;
+  if(ck&&!ck.sent){ck.sent=true;ck.answer=t.slice(0,300);save();setTimeout(()=>safeRender(renderHome),0);}
+  let sys = mode==="practice"?practiceSys():MODES[mode].sys();
+  if(mode!=="practice")sys+=nightSys();
+  if(ck)sys+=cookieSys();
   const hist = session.slice(-24).map(x=>({role:x.role,content:x.content}));
   // 메시지는 user로 시작해 user로 끝나야 함
   const input=[{role:"user",content:sys+"\n\n(여기까지는 지침이에요. 이제 대화를 시작합니다.)"}];
@@ -745,6 +760,9 @@ async function send(){
   try{
     const r=await ask(input,{modelTier:"default",onText:({text})=>{bubble.classList.remove("typing");bubble.textContent=text==="Thinking..."?"":text;$("#msgs").scrollTop=$("#msgs").scrollHeight;}});
     bubble.classList.remove("typing"); bubble.textContent=r.text;
+    if(ck){const p=takeCookieLine(r.text);
+      if(p.line){ck.line=p.line;bubble.textContent=p.text;const lb=document.createElement("div");lb.className="msg ai cookieline";lb.textContent="🥠 "+p.line;bubble.after(lb);
+        r.text=p.text+"\n\n🥠 "+p.line;save();setTimeout(()=>{safeRender(renderHome);safeRender(renderCookies);},0);}}
     session.push({role:"assistant",content:r.text,ts:nowMs()});
     if(mode==="free"){S.chat=session.slice();save();setTimeout(()=>maybeOffer(),400);}
   }catch(e){bubble.className="msg sys";bubble.textContent=aiErr(e);session.pop();if(mode==="free"){S.chat=session.slice();save();}$("#inp").value=t;}
@@ -820,9 +838,11 @@ function renderQuest(){
       : `<div style="text-align:center;padding:8px 0">
            <div style="font-size:34px">${LV_IC[done.level]}</div>
            <div style="font-family:'Gowun Batang',serif;font-size:17px;margin:6px 0">오늘의 한 걸음: ${esc(done.text)}</div>
-           ${done.feeling?`<div class="note" style="display:inline-block;margin-top:4px">그때의 마음: ${esc(done.feeling)}</div>`:""}
+           ${done.feeling?`<div class="note" style="display:inline-block;margin-top:4px">그때의 마음: ${esc(done.feeling)}</div><div><button class="testbtn" data-qe="${esc(done.id)}" style="margin-top:8px">✏️ 고치기</button></div>`
+             :`<div><button class="btn soft sm" data-qe="${esc(done.id)}" style="margin-top:6px">✏️ 그때의 마음 남기기</button></div>`}
            ${done.aiReply?`<p class="muted small" style="margin-top:10px">${esc(done.aiReply)}</p>`:""}
          </div>`;
+    box.querySelectorAll("[data-qe]").forEach(b=>b.onclick=()=>editFeeling(b.dataset.qe));
     const u=$("#btnUnrest"); if(u)u.onclick=()=>{S.quests=S.quests.filter(x=>x!==done);todayPick=null;save();renderQuest();safeRender(renderRecord);};
     return;
   }
@@ -911,7 +931,8 @@ function renderHome(){
   const d=todayDay(), total=recordedDates().size, rc=findRecall(), unread=S.reports.filter(r=>r.unread).at(-1);
   let h="";
   if(welcomeGap>=3&&!helloClosed)h+=`<div class="hello"><span>🌿</span><span><b>다시 와 줘서 반가워요.</b><br>그동안 어땠어요? 길게 말하지 않아도 괜찮아요. 오늘 마음 날씨 하나만 골라도 충분해요.</span><button id="helloX" aria-label="닫기">×</button></div>`;
-  h+=guideHTML()+firstWeekHTML();
+  const gh=guideHTML(); h+=gh+firstWeekHTML();
+  if(!gh)h+=cookieHTML();
   if(unread)h+=`<div class="mail"><span style="font-size:22px">📬</span><span style="flex:1"><b>이번 주 레포트가 도착했어요</b><br><span class="small">${esc(unread.title||"")}</span></span><button class="btn sm" id="goReport">열어 보기</button></div>`;
   const topBox=$("#homeTop"); if(topBox){topBox.innerHTML=h;h="";}
   h+=`<div class="card checkin" style="margin-bottom:0">`;
@@ -934,8 +955,65 @@ function renderHome(){
   const fg=$("#fwGo"); if(fg)fg.onclick=makeFirstWeek;
   const fo=$("#fwOk"); if(fo)fo.onclick=()=>{S.firstWeek.seen=true;save();renderHome();};
   const g=$("#goReport"); if(g)g.onclick=()=>showView("report");
+  bindCookie();
   const c=$("#ciChange"); if(c)c.onclick=()=>{ciEditing=true;renderHome();};
   box.querySelectorAll("[data-ci]").forEach(b=>b.onclick=()=>checkIn(b.dataset.ci));
+}
+/* ================= 🥠 마음 쿠키: 하루 한 번, 깨면 대화 첫 마디가 나와요 ================= */
+const COOKIES=["요즘 나한테 제일 해 주고 싶은 말은 뭐야?","이번 주에 작게 웃었던 순간 하나 말해 볼래?","오늘 나를 조금 편하게 해 준 건 뭐였어?","요즘 자주 듣는 노래가 있어?","최근에 먹은 것 중 제일 맛있었던 건?","오늘 나에게 점수 대신 한 단어를 준다면?","요즘 내가 잘 버티고 있는 부분은 어디일까?","지금 제일 쉬고 싶은 곳은 어디야?","어릴 때 좋아했던 것 중에 지금도 좋은 게 있어?","요즘 고마웠던 사람 한 명 떠올려 볼래?","오늘 하루를 색깔로 말하면 무슨 색이야?","요즘 나를 지치게 하는 것 하나, 힘이 되는 것 하나는?","최근에 '나 좀 괜찮은데?' 싶었던 순간 있어?","지금 내 방에서 제일 좋아하는 물건은?","요즘 미뤄 두고 있는 작은 일 하나 있어?","이번 주에 나한테 준 작은 선물이 있다면?","요즘 자주 떠오르는 생각 하나 꺼내 볼래?","오늘 몸은 어때? 어깨, 눈, 배 중에 어디가 제일 피곤해?","요즘 나를 웃게 만드는 사람이나 콘텐츠는?","하루 중 제일 좋아하는 시간대는 언제야?","요즘 '이건 잘했다' 싶은 선택 하나 있어?","걱정 하나를 작은 상자에 넣어 둔다면 뭘 넣을래?","요즘 누군가에게 듣고 싶은 말이 있다면 뭐야?","오늘 기억나는 장면 하나 있어?","요즘 새로 알게 된 것 하나 말해 줄래?","최근에 누군가에게 하지 못한 말이 있어?","요즘 나에게 필요한 건 휴식, 사람, 변화 중에 뭘까?","지난달의 나에게 한마디 한다면?","오늘 나를 칭찬할 일 하나만 찾아볼까?","요즘 나만 아는 작은 즐거움이 있어?"];
+let cookieArmed=false;
+function todayCookie(){return (S.cookies||[]).find(c=>c.date===today());}
+function pickCookie(){
+  const recent=new Set((S.cookies||[]).slice(-20).map(c=>c.prompt));
+  const pool=COOKIES.filter(p=>!recent.has(p)); const list=pool.length?pool:COOKIES;
+  return list[Math.floor(seeded(today()+"cookie"+(S.startedAt||""))()*list.length)];
+}
+function cookieHTML(){
+  if(needConsent())return "";
+  const d=todayDay(); if(!d||!d.weather)return "";
+  const c=todayCookie();
+  if(!c)return `<div class="cookie" id="ckOpen" role="button" tabindex="0"><span class="ce">🥠</span><span style="flex:1"><b>오늘의 마음 쿠키</b><span class="small muted" style="display:block">눌러서 깨 보세요 · 하루에 하나</span></span></div>`;
+  if(c.line)return `<div class="cookie done"><span class="ce">🥠</span><span style="flex:1"><span class="small muted" style="display:block">오늘의 글귀</span>${esc(c.line)}</span></div>`;
+  if(!c.sent)return `<div class="cookie open" id="ckFill" role="button" tabindex="0"><span class="ce">🥠</span><span style="flex:1"><span class="small muted" style="display:block">쿠키 속 질문 · 입력창에 넣어 뒀어요</span>${esc(c.prompt)}</span></div>`;
+  return "";
+}
+function fillCookie(c){
+  const inp=$("#inp"); inp.value=c.prompt; cookieArmed=true; try{autoGrow();}catch(_){}
+  if(mode!=="free")startMode("free"); else showView("chat");
+  setTimeout(()=>{try{inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}catch(_){}},80);
+}
+function bindCookie(){
+  const o=$("#ckOpen");
+  if(o)o.onclick=()=>{
+    if(todayCookie())return;
+    o.classList.add("crack");
+    setTimeout(()=>{const c={id:uid(),date:today(),ts:nowMs(),prompt:pickCookie(),sent:false,line:""};
+      S.cookies=(S.cookies||[]).concat([c]); save(); renderHome(); fillCookie(c);},600);
+  };
+  const f=$("#ckFill"); if(f)f.onclick=()=>{const c=todayCookie(); if(c)fillCookie(c);};
+}
+function cookieSys(){
+  return `\n\n[마음 쿠키] 사용자는 오늘의 '마음 쿠키' 질문에 답하고 있다. 평소처럼 2~4문장으로 답한 뒤, 맨 마지막 줄에 이 사람에게 건네는 짧은 글귀 한 줄을 "🥠 "로 시작해 붙인다. 글귀 규칙: 20~40자, 직접 쓴 문장만(유명인 명언·노래 가사·책 문장 인용 금지), 운세나 미래 예측 금지("좋은 일이 생길 거예요" 같은 말 금지), 지금 이 사람의 마음과 최근 기록을 비추는 따뜻한 말.`;
+}
+function takeCookieLine(text){
+  const lines=String(text||"").split("\n"); const i=lines.map(l=>l.trim()).findLastIndex(l=>l.startsWith("🥠"));
+  if(i<0)return {text,line:""};
+  const line=lines[i].trim().replace(/^🥠\s*/,"").replace(/^["'“]|["'”]$/g,"").trim();
+  return {text:lines.filter((_,j)=>j!==i).join("\n").trim(),line};
+}
+function renderCookies(){
+  const box=$("#cookieList"); if(!box)return;
+  const cs=(S.cookies||[]).filter(c=>c.line).slice().sort((a,b)=>b.ts-a.ts);
+  box.innerHTML=cs.length?cs.slice(0,20).map(c=>`<div class="moment"><span class="when">${esc(c.date.slice(5).replace("-","/"))}</span><span><span class="small muted" style="display:block">${esc(c.prompt)}</span>🥠 ${esc(c.line)}</span></div>`).join("")
+    :`<div class="empty">대화 탭에서 마음 쿠키를 깨면, AI가 건넨 글귀가 여기 모여요.</div>`;
+}
+/* ================= 🌙 새벽 배려 ================= */
+function nightSys(){
+  const h=nowD().getHours(); if(h<1||h>=5)return "";
+  const since=nowMs()-4*36e5;
+  const n=session.filter(m=>m.role==="user"&&m.ts&&m.ts>since).length;
+  if(n!==8&&n!==20)return "";
+  return `\n\n[새벽 배려] 지금은 새벽 ${h}시이고 대화가 꽤 길어졌다. 이번 답에서 공감을 먼저 한 뒤, 대화를 끊지 않으면서 잠깐 눕거나 쉬어 보기를 한 번만 부드럽게 권한다. 잠을 강요하거나 훈계하지 않고, "내일 이어서 이야기해도 괜찮아요"처럼 언제든 다시 와도 된다는 느낌을 준다.`;
 }
 function checkIn(w){
   ciEditing=false; let d=todayDay();
@@ -1284,7 +1362,8 @@ function renderChatHistory(){
   session.forEach(x=>{
     const k=x.ts?dkey(new Date(x.ts)):null;
     if(k&&k!==last){addMsg("sep",dayLabel(k),"sep");last=k;}
-    addMsg(x.role==="user"?"me":"ai",x.content);
+    if(x.role!=="user"&&/\n\n🥠 /.test(x.content)){const i=x.content.lastIndexOf("\n\n🥠 ");addMsg("ai",x.content.slice(0,i));addMsg("ai",x.content.slice(i+2),"ai cookieline");}
+    else addMsg(x.role==="user"?"me":"ai",x.content);
   });
 }
 function isFirstDay(){return !S.startedAt||dkey(new Date(S.startedAt))===today();}
@@ -1455,13 +1534,32 @@ function fitChat(){
  const _sv=showView; showView=function(){const r=_sv.apply(this,arguments);requestAnimationFrame(fitChat);return r;};
  window.addEventListener("resize",()=>requestAnimationFrame(fitChat));
  window.addEventListener("load",()=>setTimeout(fitChat,50));}
-function questFeeling(q){
-  openModal(`<h3>${LV_IC[q.lv]} 해냈어요!</h3>
-    <p class="small muted">「${esc(q.t)}」를 하는 동안, 혹은 하고 나서 마음이 어땠어요?</p>
-    <div class="chips" id="fChips" style="margin-bottom:8px">${["후련함","어색함","조금 뿌듯함","별 느낌 없음","긴장됨","알 수 없음"].map(f=>`<span class="chip">${f}</span>`).join("")}</div>
-    <input class="txt" id="fTxt" placeholder="직접 적어도 좋아요">
-    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" id="fSkip">건너뛰기</button><button class="btn" id="fOk">기록하기</button></div>`);
+const FEEL_CHIPS=["후련함","어색함","조금 뿌듯함","별 느낌 없음","긴장됨","알 수 없음"];
+function feelingForm(title,text,init,skipLabel){
+  openModal(`<h3>${title}</h3>
+    <p class="small muted">「${esc(text)}」를 하는 동안, 혹은 하고 나서 마음이 어땠어요?</p>
+    <div class="chips" id="fChips" style="margin-bottom:8px">${FEEL_CHIPS.map(f=>`<span class="chip ${f===init?"on":""}">${f}</span>`).join("")}</div>
+    <input class="txt" id="fTxt" placeholder="직접 적어도 좋아요" value="${esc(init||"")}">
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" id="fSkip">${skipLabel}</button><button class="btn" id="fOk">기록하기</button></div>
+    ${skipLabel==="나중에 쓸게요"?`<p class="small muted" style="margin:8px 0 0;text-align:right">나중에 퀘스트 탭에서 언제든 남길 수 있어요.</p>`:""}`);
   document.querySelectorAll("#fChips .chip").forEach(c=>c.onclick=()=>{document.querySelectorAll("#fChips .chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");$("#fTxt").value=c.textContent;});
+}
+async function questReply(rec){
+  try{
+    const r=await ask(`사용자가 ${rec.date!==today()?"예전에":"오늘"} 작은 퀘스트 「${rec.text}」를 해냈고, 그때의 마음을 "${rec.feeling||"말하지 않음"}"이라고 했어요. 칭찬을 과장하지 말고, 그 마음을 있는 그대로 인정하는 따뜻한 한두 문장으로 답해 주세요. 점수·연속 기록 언급 금지. 평문으로.`,{modelTier:"quick"});
+    rec.aiReply=r.text; save(); renderQuest(); safeRender(renderQuestLog);
+  }catch(e){}
+}
+function editFeeling(id){
+  const rec=(S.quests||[]).find(x=>x.id===id); if(!rec)return;
+  feelingForm(rec.feeling?"✏️ 그때의 마음 고치기":"✏️ 그때의 마음 남기기",rec.text,rec.feeling,"취소");
+  $("#fSkip").onclick=closeModal;
+  $("#fOk").onclick=()=>{const v=$("#fTxt").value.trim(); if(!v){closeModal();return;}
+    const changed=v!==rec.feeling; rec.feeling=v; closeModal(); save(); renderQuest(); safeRender(renderQuestLog);
+    if(changed)questReply(rec);};
+}
+function questFeeling(q){
+  feelingForm(`${LV_IC[q.lv]} 해냈어요!`,q.t,"","나중에 쓸게요");
   const finish=async(feeling)=>{
     closeModal();
     const rec={id:uid(),date:q.date||today(),ts:nowMs(),text:q.t,level:q.lv,feeling};
@@ -1473,10 +1571,7 @@ function questFeeling(q){
     if(q.lv>S.level&&cnt(q.lv)>=2)S.level=q.lv;
     else if(q.lv===S.level&&S.level<4&&cnt(S.level)>=3)S.level++;
     save(); todayPick=null; renderQuest(); renderMap(); renderRecord();
-    try{
-      const r=await ask(`사용자가 ${q.date&&q.date!==today()?"어제":"오늘"} 작은 퀘스트 「${q.t}」를 해냈고, 그때의 마음을 "${feeling||"말하지 않음"}"이라고 했어요. 칭찬을 과장하지 말고, 그 마음을 있는 그대로 인정하는 따뜻한 한두 문장으로 답해 주세요. 점수·연속 기록 언급 금지. 평문으로.`,{modelTier:"quick"});
-      rec.aiReply=r.text; save(); renderQuest(); safeRender(renderQuestLog);
-    }catch(e){}
+    if(feeling)questReply(rec);
   };
   $("#fOk").onclick=()=>finish($("#fTxt").value.trim());
   $("#fSkip").onclick=()=>finish("");
@@ -1489,8 +1584,9 @@ function renderQuestLog(){
   const shown=questLogAll?qs:qs.slice(0,10);
   box.innerHTML=shown.map(q=>q.rest
     ?`<div class="list-item"><div class="small muted">${esc(q.date.slice(5).replace("-","/"))}</div><div>🌙 쉬어 간 날</div></div>`
-    :`<div class="list-item"><div class="small muted">${esc(q.date.slice(5).replace("-","/"))} · ${LV_IC[q.level]} ${LEVELS[q.level]}</div><div>${esc(q.text)}</div>${q.feeling?`<div class="note" style="display:inline-block;margin-top:6px">그때의 마음: ${esc(q.feeling)}</div>`:""}${q.aiReply?`<div class="small muted" style="margin-top:6px">${esc(q.aiReply)}</div>`:""}</div>`).join("")
+    :`<div class="list-item"><div class="small muted">${esc(q.date.slice(5).replace("-","/"))} · ${LV_IC[q.level]} ${LEVELS[q.level]}</div><div>${esc(q.text)}</div>${q.feeling?`<div class="note" style="display:inline-block;margin-top:6px">그때의 마음: ${esc(q.feeling)}</div>`:""}<div><button class="testbtn" data-qe="${esc(q.id)}" style="margin-top:6px">${q.feeling?"✏️ 고치기":"✏️ 그때의 마음 남기기"}</button></div>${q.aiReply?`<div class="small muted" style="margin-top:6px">${esc(q.aiReply)}</div>`:""}</div>`).join("")
     +(qs.length>10?`<div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost sm" id="qlMore">${questLogAll?"접기":`전체 보기 (${qs.length}개)`}</button></div>`:"");
+  box.querySelectorAll("[data-qe]").forEach(b=>b.onclick=()=>editFeeling(b.dataset.qe));
   const m=$("#qlMore"); if(m)m.onclick=()=>{questLogAll=!questLogAll;renderQuestLog();};
 }
 function renderMap(){
@@ -1682,6 +1778,7 @@ function bindCardSongs(root){
   });
 }
 function renderMoments(){
+  safeRender(renderCookies);
   const items=[];
   (S.days||[]).slice().sort((a,b)=>b.ts-a.ts).forEach(d=>(d.finds||[]).forEach(f=>items.push({date:d.date,t:f})));
   $("#moments").innerHTML=items.length
